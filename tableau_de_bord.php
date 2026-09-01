@@ -15,6 +15,7 @@ if (in_array($role, ['GESTIONNAIRE', 'ADMINISTRATEUR'], true)) {
     $indicateurs['total'] = (int) $pdo->query("SELECT COUNT(*) FROM memoire")->fetchColumn();
     $indicateurs['en_attente'] = (int) $pdo->query("SELECT COUNT(*) FROM memoire WHERE statut = 'EN_ATTENTE'")->fetchColumn();
     $indicateurs['publies'] = (int) $pdo->query("SELECT COUNT(*) FROM memoire WHERE statut = 'PUBLIE'")->fetchColumn();
+    $indicateurs['rejetes'] = (int) $pdo->query("SELECT COUNT(*) FROM memoire WHERE statut = 'REJETE'")->fetchColumn();
     $indicateurs['consultations'] = (int) $pdo->query("SELECT COUNT(*) FROM consultation")->fetchColumn();
 
     $seuil = get_seuil_alerte($pdo);
@@ -80,6 +81,7 @@ require __DIR__ . '/includes/header.php';
         <div class="carte indicateur"><div class="valeur"><?= $indicateurs['total'] ?></div><div class="libelle">Mémoires archivés</div></div>
         <div class="carte indicateur"><div class="valeur"><?= $indicateurs['en_attente'] ?></div><div class="libelle">Dépôts en attente de validation</div></div>
         <div class="carte indicateur"><div class="valeur"><?= $indicateurs['publies'] ?></div><div class="libelle">Mémoires publiés</div></div>
+        <div class="carte indicateur"><div class="valeur"><?= $indicateurs['rejetes'] ?></div><div class="libelle">Dépôts rejetés</div></div>
         <div class="carte indicateur"><div class="valeur"><?= $indicateurs['consultations'] ?></div><div class="libelle">Consultations enregistrées</div></div>
         <div class="carte indicateur"><div class="valeur" style="<?= $indicateurs['alertes'] ? 'color:var(--rouge)' : '' ?>"><?= $indicateurs['alertes'] ?></div><div class="libelle">Mémoires en alerte de similarité</div></div>
     <?php elseif ($role === 'ETUDIANT'): ?>
@@ -93,6 +95,8 @@ require __DIR__ . '/includes/header.php';
 
 <?php if ($role === 'ETUDIANT'): ?>
     <p><a class="btn" href="<?= BASE_URL ?>/deposer_memoire.php">Déposer un nouveau mémoire</a></p>
+<?php elseif (in_array($role, ['GESTIONNAIRE', 'ADMINISTRATEUR'], true)): ?>
+    <p><a class="btn btn-secondaire" href="<?= BASE_URL ?>/statistiques.php">Voir toutes les statistiques</a></p>
 <?php endif; ?>
 
 <h2><?= in_array($role, ['GESTIONNAIRE', 'ADMINISTRATEUR', 'ENCADREUR'], true) ? 'Derniers mémoires déposés' : 'Mes derniers dépôts' ?></h2>
@@ -113,7 +117,21 @@ require __DIR__ . '/includes/header.php';
                 <?php if (isset($m['nom'])): ?><td><?= e($m['prenom'] . ' ' . $m['nom']) ?></td><?php endif; ?>
                 <td><span class="<?= classe_statut($m['statut']) ?>"><?= e(libelle_statut($m['statut'])) ?></span></td>
                 <td><?= e(formater_date($m['date_depot'])) ?></td>
-                <td><a href="<?= BASE_URL ?>/consulter_memoire.php?id=<?= (int) $m['id_memoire'] ?>">Voir</a></td>
+                <td class="actions-ligne">
+                    <a href="<?= BASE_URL ?>/consulter_memoire.php?id=<?= (int) $m['id_memoire'] ?>">Voir</a>
+                    <?php if ($m['statut'] === 'EN_ATTENTE' && in_array($role, ['GESTIONNAIRE', 'ADMINISTRATEUR'], true)): ?>
+                        <form method="post" action="<?= BASE_URL ?>/memoires/valider.php" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="<?= e(jeton_csrf()) ?>">
+                            <input type="hidden" name="id" value="<?= (int) $m['id_memoire'] ?>">
+                            <button type="submit" name="decision" value="PUBLIE" class="btn btn-succes btn-sm" data-confirmer="Publier ce mémoire ?">Valider</button>
+                        </form>
+                        <form method="post" action="<?= BASE_URL ?>/memoires/valider.php" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="<?= e(jeton_csrf()) ?>">
+                            <input type="hidden" name="id" value="<?= (int) $m['id_memoire'] ?>">
+                            <button type="submit" name="decision" value="REJETE" class="btn btn-danger btn-sm" data-confirmer="Rejeter ce dépôt ?">Rejeter</button>
+                        </form>
+                    <?php endif; ?>
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody>
