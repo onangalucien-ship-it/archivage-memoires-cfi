@@ -1,0 +1,5 @@
+# Empêche toute exécution de script dans le dossier de stockage des PDF déposés
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|cgi|asp|sh)$">
+    Require all denied
+</FilesMatch>
+Options -ExecCGI -Indexes
